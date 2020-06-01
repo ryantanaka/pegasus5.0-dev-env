@@ -1,0 +1,5 @@
+# Submit Directories #
+######################
+./shared-data/*/work/*
+./shared-data/sample-docker-wf/*.yml
+./shared-data/sample-docker-wf/*.properties
