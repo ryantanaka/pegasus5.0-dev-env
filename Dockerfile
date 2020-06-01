@@ -2,7 +2,8 @@ FROM centos:centos7
 
 RUN yum -y update | /bin/true
 
-RUN useradd --gid 100 --uid 550 --create-home --password scitech123 scitech
+RUN groupadd --gid 808 scitech-group
+RUN useradd --gid 808 --uid 550 --create-home --password scitech123 scitech
 
 # Configure Sudo
 RUN echo -e "scitech ALL=(ALL)       NOPASSWD:ALL\n" >> /etc/sudoers
@@ -55,7 +56,7 @@ RUN yum -y install \
 
 # Docker + Docker in Docker setup
 RUN curl -sSL https://get.docker.com/ | sh
-ADD ./wrapdocker /usr/local/bin/wrapdocker
+ADD ./config/wrapdocker /usr/local/bin/wrapdocker
 RUN chmod +x /usr/local/bin/wrapdocker
 
 VOLUME /var/lib/docker
@@ -88,6 +89,9 @@ USER scitech
 
 WORKDIR /home/scitech
 
+# Set ARG on build so that we can pull latest pegasus 
+ARG BUILD_DATE=2020-06-01_12:59:18
+
 # Get Pegasus master
 RUN git clone https://github.com/pegasus-isi/pegasus.git \
     && cd pegasus \
@@ -97,7 +101,7 @@ ENV PATH /home/scitech/pegasus/dist/pegasus-5.0.0dev/bin:$HOME/.pyenv/bin:$PATH:
 ENV PYTHONPATH /home/scitech/pegasus/dist/pegasus-5.0.0dev/lib64/python3.6/site-packages
 
 # Set Kernel for Jupyter (exposes PATH and PYTHONPATH for use when terminal from jupyter is used)
-ADD ./kernel.json /usr/local/share/jupyter/kernels/python3/kernel.json
+ADD ./config/kernel.json /usr/local/share/jupyter/kernels/python3/kernel.json
 RUN echo -e "export PATH=/home/scitech/pegasus/dist/pegasus-5.0.0dev/bin:/home/scitech/.pyenv/bin:\$PATH:/usr/lib64/mpich/bin" >> /home/scitech/.bashrc
 RUN echo -e "export PYTHONPATH=/home/scitech/pegasus/dist/pegasus-5.0.0dev/lib64/python3.6/site-packages" >> /home/scitech/.bashrc
 
@@ -105,4 +109,4 @@ RUN echo -e "export PYTHONPATH=/home/scitech/pegasus/dist/pegasus-5.0.0dev/lib64
 CMD ipython --IPCompleter.greedy=True
 
 ENTRYPOINT ["sudo", "/usr/local/bin/wrapdocker"]
-CMD ["su", "-", "scitech", "-c", "jupyter notebook --port=8888 --no-browser --ip=0.0.0.0 --allow-root"] 
+CMD ["su", "-", "scitech", "-c", "jupyter notebook --notebook-dir=/home/scitech/shared-data --port=8888 --no-browser --ip=0.0.0.0 --allow-root"] 
