@@ -8,8 +8,8 @@ containers are supported.
 1. `git clone https://github.com/ryantanaka/pegasus5.0-dev-env.git`
 2. `./build.sh`
     - This will build the image from scratch and will take 10 minutes or so. 
-    Subsequent calls to this always build from Pegasus master. All previous
-    layers are cached and only Pegasus will be rebuilt. 
+    Subsequent calls to this always build the latest Pegasus master. All previous
+    layers are reused and only Pegasus will be rebuilt. 
 3. `./run.sh`
     - `./shared-data` will be bind mounted in the container to `/home/scitech/shared-data`
     - `jupyter notebook` will be running on `localhost:8888`
