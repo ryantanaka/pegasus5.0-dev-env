@@ -49,6 +49,7 @@ RUN yum -y install \
      sudo \ 
      squashfs-tools \
      tar \
+     vim \ 
      wget \
      which \
      yum-plugin-priorities \
