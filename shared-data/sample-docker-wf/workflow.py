@@ -205,7 +205,6 @@ try:
         relative_dir=RUN_ID,
         submit=True
     ).wait()
-except Exception as e:
-    print(e.args[1].stdout)
-    print(e.args[1].stderr)
+except PegasusClientError as e:
+    print(e.output)
 
