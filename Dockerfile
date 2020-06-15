@@ -90,6 +90,11 @@ USER scitech
 
 WORKDIR /home/scitech
 
+# Set up config for ensemble manager
+RUN mkdir /home/scitech/.pegasus \
+    && echo -e "#!/usr/bin/env python3\nUSERNAME='scitech'\nPASSWORD='scitech123'\n" >> /home/scitech/.pegasus/service.py \
+    && chmod u+x /home/scitech/.pegasus/service.py
+
 # Set ARG on build so that we can pull latest pegasus 
 ARG BUILD_DATE=2020-06-01_12:59:18
 
@@ -101,13 +106,13 @@ RUN git clone https://github.com/pegasus-isi/pegasus.git \
 ENV PATH /home/scitech/pegasus/dist/pegasus-5.0.0dev/bin:$HOME/.pyenv/bin:$PATH:/usr/lib64/mpich/bin
 ENV PYTHONPATH /home/scitech/pegasus/dist/pegasus-5.0.0dev/lib64/python3.6/site-packages
 
+# Set up pegasus database
+RUN /home/scitech/pegasus/dist/pegasus-5.0.0dev/bin/pegasus-db-admin update sqlite:////home/scitech/.pegasus/workflow.db
+
 # Set Kernel for Jupyter (exposes PATH and PYTHONPATH for use when terminal from jupyter is used)
 ADD ./config/kernel.json /usr/local/share/jupyter/kernels/python3/kernel.json
 RUN echo -e "export PATH=/home/scitech/pegasus/dist/pegasus-5.0.0dev/bin:/home/scitech/.pyenv/bin:\$PATH:/usr/lib64/mpich/bin" >> /home/scitech/.bashrc
 RUN echo -e "export PYTHONPATH=/home/scitech/pegasus/dist/pegasus-5.0.0dev/lib64/python3.6/site-packages" >> /home/scitech/.bashrc
-
-# Setup intellisense in jupyter
-CMD ipython --IPCompleter.greedy=True
 
 ENTRYPOINT ["sudo", "/usr/local/bin/wrapdocker"]
 CMD ["su", "-", "scitech", "-c", "jupyter notebook --notebook-dir=/home/scitech/shared-data --port=8888 --no-browser --ip=0.0.0.0 --allow-root"] 
