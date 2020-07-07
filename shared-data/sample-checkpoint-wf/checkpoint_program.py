@@ -10,47 +10,49 @@ from pathlib import Path
 def parse_args(args):
     parser = argparse.ArgumentParser(
             description="A checkpointing toy program that will print"
-            " [0-100) while sleeping 1 second between each iteration. If a TERM"
-            " is received, the current number will be written to a file so that"
-            " the program may resume where it left off."
+            " [0-90) while sleeping 1 second between each iteration. If a TERM"
+            " is received, the current number will be written to a file (saved_state.txt) so that"
+            " the program may resume where it left off. The program will first check for"
+            " the existence of the checkpoint file in cwd and use it if it exists."
         )
-
-    parser.add_argument(
-                "-c",
-                "--checkpoint",
-                type=str,
-                help="the checkpoint file to resume from"
-            )
 
     return parser.parse_args()
 
 if __name__=="__main__":
     args = parse_args(sys.argv[1:])
-
+    CHECKPOINT_FILE = "saved_state.txt"
+    NUM_ITERATIONS = 90
+    
     i = 0
 
-    if args.checkpoint:
-        try:
-            with open(args.checkpoint, "r") as f:
-                i = int(f.read())
-        except FileNotFoundError as e:
-            print("Checkpoint file: {} not found".format(args.checkpoint))
-            sys.exit(1)
+    try:
+        with open(CHECKPOINT_FILE, mode="r") as f:
+            i = int(f.read())
+            if i == -1:
+                i = 0
+                print("placed holder file: {} found, starting with i = 0".format(CHECKPOINT_FILE))
+            else:
+                print("{} found, starting with i = {}".format(CHECKPOINT_FILE, i))
+    except FileNotFoundError as e:
+        print("{} not found, starting with i = 0".format(CHECKPOINT_FILE))
     
     def SIGTERM_handler(signum, frame):
-        CHECKPOINT_FILE = Path(".") / "saved_state.txt"
         print("Signal: {} received, writing checkpoint file with state {} to {}".format(
-                signum, i, CHECKPOINT_FILE.resolve()
+                signum, i, CHECKPOINT_FILE
             ))
 
-        with CHECKPOINT_FILE.open(mode="w") as f:
+        with open(CHECKPOINT_FILE, mode="w") as f:
             f.write(str(i))
 
     signal.signal(signal.SIGTERM, SIGTERM_handler)
 
     print("pid: {}".format(os.getpid()))
-    for _ in range(100):
-        if i == 100:
+    for _ in range(NUM_ITERATIONS):
+        # for testing
+        #if i == 10:
+        #    os.kill(os.getpid(), signal.SIGTERM)
+        
+        if i == NUM_ITERATIONS - 1:
             break
 
         print(i)
