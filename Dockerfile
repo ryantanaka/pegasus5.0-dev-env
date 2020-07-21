@@ -114,5 +114,9 @@ ADD ./config/kernel.json /usr/local/share/jupyter/kernels/python3/kernel.json
 RUN echo -e "export PATH=/home/scitech/pegasus/dist/pegasus-5.0.0dev/bin:/home/scitech/.pyenv/bin:\$PATH:/usr/lib64/mpich/bin" >> /home/scitech/.bashrc
 RUN echo -e "export PYTHONPATH=/home/scitech/pegasus/dist/pegasus-5.0.0dev/lib64/python3.6/site-packages" >> /home/scitech/.bashrc
 
+# Set notebook password to 'scitech'. This pw will be used instead of token authentication
+RUN mkdir /home/scitech/.jupyter \ 
+    && echo "{ \"NotebookApp\": { \"password\": \"sha1:30a323540baa:6eec8eaf3b4e0f44f2f2aa7b504f80d5bf0ad745\" } }" >> /home/scitech/.jupyter/jupyter_notebook_config.json
+
 ENTRYPOINT ["sudo", "/usr/local/bin/wrapdocker"]
 CMD ["su", "-", "scitech", "-c", "jupyter notebook --notebook-dir=/home/scitech/shared-data --port=8888 --no-browser --ip=0.0.0.0 --allow-root"] 
