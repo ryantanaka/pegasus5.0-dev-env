@@ -70,6 +70,8 @@ RUN pip3 install tox
 # Documentation - FIXME: not a great idea to use pip3 install in this container
 RUN pip3 install six sphinx recommonmark sphinx_rtd_theme sphinxcontrib-openapi javasphinx jupyter
 
+RUN pip3 install --upgrade pip
+
 # Set Timezone
 RUN cp /usr/share/zoneinfo/America/Los_Angeles /etc/localtime
 
