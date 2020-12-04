@@ -68,7 +68,7 @@ RUN usermod -aG docker scitech
 RUN pip3 install tox
 
 # Documentation - FIXME: not a great idea to use pip3 install in this container
-RUN pip3 install six sphinx recommonmark sphinx_rtd_theme sphinxcontrib-openapi javasphinx jupyter
+RUN pip3 install six sphinx recommonmark sphinx_rtd_theme sphinxcontrib-openapi javasphinx jupyter GitPython
 
 RUN pip3 install --upgrade pip
 
@@ -105,16 +105,17 @@ RUN git clone https://github.com/pegasus-isi/pegasus.git \
     && cd pegasus \
     && ant dist
 
-ENV PATH /home/scitech/pegasus/dist/pegasus-5.0.0dev/bin:$HOME/.pyenv/bin:$PATH:/usr/lib64/mpich/bin
-ENV PYTHONPATH /home/scitech/pegasus/dist/pegasus-5.0.0dev/lib64/python3.6/site-packages
+ENV PATH /home/scitech/pegasus/dist/pegasus-5.1.0dev/bin:$HOME/.pyenv/bin:$PATH:/usr/lib64/mpich/bin
+ENV PYTHONPATH /home/scitech/pegasus/dist/pegasus-5.1.0dev/lib64/python3.6/site-packages
 
 # Set up pegasus database
-RUN /home/scitech/pegasus/dist/pegasus-5.0.0dev/bin/pegasus-db-admin update sqlite:////home/scitech/.pegasus/workflow.db
+RUN /home/scitech/pegasus/dist/pegasus-5.1.0dev/bin/pegasus-db-admin update sqlite:////home/scitech/.pegasus/workflow.db
 
 # Set Kernel for Jupyter (exposes PATH and PYTHONPATH for use when terminal from jupyter is used)
+RUN echo "hi"
 ADD ./config/kernel.json /usr/local/share/jupyter/kernels/python3/kernel.json
-RUN echo -e "export PATH=/home/scitech/pegasus/dist/pegasus-5.0.0dev/bin:/home/scitech/.pyenv/bin:\$PATH:/usr/lib64/mpich/bin" >> /home/scitech/.bashrc
-RUN echo -e "export PYTHONPATH=/home/scitech/pegasus/dist/pegasus-5.0.0dev/lib64/python3.6/site-packages" >> /home/scitech/.bashrc
+RUN echo -e "export PATH=/home/scitech/pegasus/dist/pegasus-5.1.0dev/bin:/home/scitech/.pyenv/bin:\$PATH:/usr/lib64/mpich/bin" >> /home/scitech/.bashrc
+RUN echo -e "export PYTHONPATH=/home/scitech/pegasus/dist/pegasus-5.1.0dev/lib64/python3.6/site-packages" >> /home/scitech/.bashrc
 
 # Set notebook password to 'scitech'. This pw will be used instead of token authentication
 RUN mkdir /home/scitech/.jupyter \ 
