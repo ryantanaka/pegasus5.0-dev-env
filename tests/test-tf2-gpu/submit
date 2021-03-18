@@ -1,0 +1,8 @@
+executable = test.py
+error = test.error
+output = test.output
+
+request_cpus = 1
+request_gpus = 1
+
+queue 1
