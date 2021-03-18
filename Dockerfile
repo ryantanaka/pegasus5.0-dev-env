@@ -39,8 +39,9 @@ RUN echo "deb-src http://research.cs.wisc.edu/htcondor/ubuntu/8.8/bionic bionic 
 RUN apt update
 RUN DEBIAN_FRONTEND=noninteractive apt install -y htcondor
 
-# configure minihtcondor
+# configure minihtcondor and GPU usage
 RUN wget -O /etc/condor/config.d/00-minicondor-ubuntu https://raw.githubusercontent.com/htcondor/htcondor/master/build/docker/services/mini/00-minicondor-ubuntu
+RUN echo "use feature : GPUs" >> /etc/condor/condor_config
 
 # install pegasus
 RUN wget -O - http://download.pegasus.isi.edu/pegasus/gpg.txt | sudo apt-key add -
