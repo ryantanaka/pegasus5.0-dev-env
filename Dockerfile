@@ -1,125 +1,78 @@
-FROM centos:centos7
+# Ubuntu 18.04
+from nvidia/cuda:10.1-base
 
-RUN yum -y update | /bin/true
+# install linux packages
+RUN apt update && apt install -y \
+        software-properties-common \
+        wget \
+        curl \
+        sudo \
+        vim \
+        default-jre
 
+
+# set locale
+ENV LANG C.UTF-8
+
+# user setup (pw: scitech123)
 RUN groupadd --gid 808 scitech-group
 RUN useradd --gid 808 --uid 550 --create-home --password '$6$ouJkMasm5X8E4Aye$QTFH2cHk4b8/TmzAcCxbTz7Y84xyNFs.gqm/HWEykdngmOgELums1qOi3e6r8Z.j7GEA9bObS/2pTN1WArGNf0' scitech
-
-# Configure Sudo
-RUN echo -e "scitech ALL=(ALL)       NOPASSWD:ALL\n" >> /etc/sudoers
-
-# Test requirements
-RUN yum -y install epel-release
-RUN yum -y install ant | /bin/true
-RUN yum -y install \
-     ant-apache-regexp \
-     ant-junit \
-     bc \
-     bzip2-devel \
-     ca-certificates \ 
-     cryptsetup \
-     epel-release \
-     gcc \
-     gcc-c++ \
-     git \
-     golang \
-     iptables \ 
-     java-1.8.0-openjdk-devel \
-     libffi-devel \
-     libseccomp-devel \
-     libuuid-devel \
-     lxc \
-     make \
-     mpich-devel \
-     mysql-devel \
-     openssl-devel \
-     patch \
-     postgresql-devel \
-     python36-devel \
-     python36-pip \
-     python36-pyOpenSSL \
-     python36-pytest \
-     python36-PyYAML \
-     python36-setuptools \
-     R-devel \
-     readline-devel \
-     rpm-build \
-     singularity \
-     sqlite-devel \
-     sudo \ 
-     squashfs-tools \
-     tar \
-     vim \ 
-     wget \
-     which \
-     yum-plugin-priorities \
-     zlib-devel 
+RUN usermod -aG sudo scitech
+RUN echo "scitech ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
 # Docker + Docker in Docker setup
 RUN curl -sSL https://get.docker.com/ | sh
 ADD ./config/wrapdocker /usr/local/bin/wrapdocker
 RUN chmod +x /usr/local/bin/wrapdocker
-
 VOLUME /var/lib/docker
-
 RUN usermod -aG docker scitech
 
-# Python test requirements - FIXME: not a great idea to use pip3 install in this container
-RUN pip3 install tox
+# install python and required packages
+RUN add-apt-repository -y ppa:deadsnakes/ppa
+RUN apt install -y python3.7 python3-pip
+RUN pip3 install pyyaml GitPython jupyter
 
-# Documentation - FIXME: not a great idea to use pip3 install in this container
-RUN pip3 install six sphinx recommonmark sphinx_rtd_theme sphinxcontrib-openapi javasphinx jupyter GitPython
+# install htcondor
+RUN wget -qO - https://research.cs.wisc.edu/htcondor/ubuntu/HTCondor-Release.gpg.key | sudo apt-key add -
+RUN echo "deb http://research.cs.wisc.edu/htcondor/ubuntu/8.8/bionic bionic contrib" >> /etc/apt/sources.list
+RUN echo "deb-src http://research.cs.wisc.edu/htcondor/ubuntu/8.8/bionic bionic contrib" >> /etc/apt/sources.list
+RUN apt update
+RUN DEBIAN_FRONTEND=noninteractive apt install -y htcondor
 
-RUN pip3 install --upgrade pip
+# configure minihtcondor
+RUN wget -O /etc/condor/config.d/00-minicondor-ubuntu https://raw.githubusercontent.com/htcondor/htcondor/master/build/docker/services/mini/00-minicondor-ubuntu
 
-# Set Timezone
-RUN cp /usr/share/zoneinfo/America/Los_Angeles /etc/localtime
+# install pegasus
+RUN wget -O - http://download.pegasus.isi.edu/pegasus/gpg.txt | sudo apt-key add -
+RUN echo 'deb [arch=amd64] http://download.pegasus.isi.edu/pegasus/ubuntu bionic main' | sudo tee /etc/apt/sources.list.d/pegasus.list
+RUN apt update
+RUN apt install -y pegasus
 
-# Get Condor yum repo
-RUN curl -o /etc/yum.repos.d/condor.repo https://research.cs.wisc.edu/htcondor/yum/repo.d/htcondor-stable-rhel7.repo
-RUN rpm --import https://research.cs.wisc.edu/htcondor/yum/RPM-GPG-KEY-HTCondor
-RUN yum -y install condor minicondor
-RUN sed -i 's/condor@/scitech@/g' /etc/condor/config.d/00-minicondor
+# tests
+RUN python3 -c "print('python tēst working')"
 
-RUN usermod -a -G condor scitech
-RUN chmod -R g+w /var/{lib,log,lock,run}/condor
+# setup entrypoint
+# TODO: figure out why condor_master doesn't start if I do it this way...
+ENV EP /usr/local/bin/entrypoint.sh
+RUN echo "#!/bin/bash" >> $EP \
+    && chmod u+x $EP \
+    && printf "\ncondor_master\n" >> $EP \
+    && tail -n 113 /usr/local/bin/wrapdocker >> $EP
 
-RUN chown -R scitech /home/scitech/
-
-RUN echo -e "condor_master > /dev/null 2>&1" >> /home/scitech/.bashrc
-
+# user setup
 USER scitech
-
 WORKDIR /home/scitech
 
-# Set up config for ensemble manager
-RUN mkdir /home/scitech/.pegasus \
-    && echo -e "#!/usr/bin/env python3\nUSERNAME='scitech'\nPASSWORD='scitech123'\n" >> /home/scitech/.pegasus/service.py \
+RUN echo "export PYTHONPATH=$(pegasus-config --python)" >> ~/.bashrc
+
+# setup configuration for ensemble manager
+RUN pegasus-db-admin create
+RUN printf "#!/usr/bin/env python3\nUSERNAME='scitech'\nPASSWORD='scitech123'\n" >> /home/scitech/.pegasus/service.py \
     && chmod u+x /home/scitech/.pegasus/service.py
-
-# Set ARG on build so that we can pull latest pegasus 
-ARG BUILD_DATE=2020-06-01_12:59:18
-
-# Get Pegasus master
-RUN git clone https://github.com/pegasus-isi/pegasus.git \
-    && cd pegasus \
-    && ant dist
-
-ENV PATH /home/scitech/pegasus/dist/pegasus-5.1.0dev/bin:$HOME/.pyenv/bin:$PATH:/usr/lib64/mpich/bin
-ENV PYTHONPATH /home/scitech/pegasus/dist/pegasus-5.1.0dev/lib64/python3.6/site-packages
-
-# Set up pegasus database
-RUN /home/scitech/pegasus/dist/pegasus-5.1.0dev/bin/pegasus-db-admin update sqlite:////home/scitech/.pegasus/workflow.db
-
-# Set Kernel for Jupyter (exposes PATH and PYTHONPATH for use when terminal from jupyter is used)
-RUN echo "hi"
-ADD ./config/kernel.json /usr/local/share/jupyter/kernels/python3/kernel.json
-RUN echo -e "export PATH=/home/scitech/pegasus/dist/pegasus-5.1.0dev/bin:/home/scitech/.pyenv/bin:\$PATH:/usr/lib64/mpich/bin" >> /home/scitech/.bashrc
-RUN echo -e "export PYTHONPATH=/home/scitech/pegasus/dist/pegasus-5.1.0dev/lib64/python3.6/site-packages" >> /home/scitech/.bashrc
 
 # Set notebook password to 'scitech'. This pw will be used instead of token authentication
 RUN mkdir /home/scitech/.jupyter \ 
     && echo "{ \"NotebookApp\": { \"password\": \"sha1:30a323540baa:6eec8eaf3b4e0f44f2f2aa7b504f80d5bf0ad745\" } }" >> /home/scitech/.jupyter/jupyter_notebook_config.json
 
-ENTRYPOINT ["sudo", "/usr/local/bin/wrapdocker"]
+ENTRYPOINT ["sudo", "/usr/local/bin/entrypoint.sh"]
 CMD ["su", "-", "scitech", "-c", "jupyter notebook --notebook-dir=/home/scitech/shared-data --port=8888 --no-browser --ip=0.0.0.0 --allow-root"] 
