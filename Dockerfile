@@ -44,10 +44,10 @@ RUN wget -O /etc/condor/config.d/00-minicondor-ubuntu https://raw.githubusercont
 RUN echo "use feature : GPUs" >> /etc/condor/condor_config
 
 # install pegasus
-RUN wget -O - http://download.pegasus.isi.edu/pegasus/gpg.txt | sudo apt-key add -
-RUN echo 'deb [arch=amd64] http://download.pegasus.isi.edu/pegasus/ubuntu bionic main' | sudo tee /etc/apt/sources.list.d/pegasus.list
-RUN apt update
-RUN apt install -y pegasus
+RUN wget "https://download.pegasus.isi.edu/pegasus/development/5.1/ubuntu/dists/bionic/main/binary-amd64/pegasus_5.1.0~dev202109142128-1+ubuntu18_amd64.deb" \
+    && apt install -y ./pegasus_5.1.0~dev202109142128-1+ubuntu18_amd64.deb \
+    && rm -f pegasus_5.1.0~dev202109142128-1+ubuntu18_amd64.deb
+
 
 # tests
 RUN python3 -c "print('python tēst working')"
