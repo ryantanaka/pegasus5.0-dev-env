@@ -1,6 +1,9 @@
 # Ubuntu 18.04
 from nvidia/cuda:10.1-base
 
+# set locale
+ENV LANG C.UTF-8
+
 # install linux packages
 RUN apt update && apt install -y \
         software-properties-common \
@@ -10,9 +13,27 @@ RUN apt update && apt install -y \
         vim \
         default-jre
 
+# install additional cuda packages (need when using tf2.3 w/GPU but are not included in the parent image
+WORKDIR /tmp
+ADD ./libcudnn7_7.6.5.32-1+cuda10.1_amd64.deb /tmp
+RUN dpkg -i libcudnn7_7.6.5.32-1+cuda10.1_amd64.deb
 
-# set locale
-ENV LANG C.UTF-8
+RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/libcublas10_10.1.0.105-1_amd64.deb
+RUN dpkg -i libcublas10_10.1.0.105-1_amd64.deb
+
+RUN wget  https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-cufft-10-1_10.1.105-1_amd64.deb
+RUN dpkg -i cuda-cufft-10-1_10.1.105-1_amd64.deb
+
+RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-curand-10-1_10.1.243-1_amd64.deb
+RUN dpkg -i cuda-curand-10-1_10.1.243-1_amd64.deb
+
+RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-cusolver-10-1_10.1.243-1_amd64.deb
+RUN dpkg -i cuda-cusolver-10-1_10.1.243-1_amd64.deb
+
+RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-cusparse-10-1_10.1.243-1_amd64.deb
+RUN dpkg -i cuda-cusparse-10-1_10.1.243-1_amd64.deb
+
+WORKDIR /
 
 # user setup (pw: scitech123)
 RUN groupadd --gid 808 scitech-group
@@ -30,6 +51,7 @@ RUN usermod -aG docker scitech
 # install python and required packages
 RUN add-apt-repository -y ppa:deadsnakes/ppa
 RUN apt install -y python3.7 python3-pip
+RUN pip3 install -U pip
 RUN pip3 install pyyaml GitPython jupyter
 
 # install htcondor
@@ -49,9 +71,6 @@ RUN wget "https://download.pegasus.isi.edu/pegasus/development/5.1/ubuntu/dists/
     && rm -f pegasus_5.1.0~dev202109142128-1+ubuntu18_amd64.deb
 
 
-# tests
-RUN python3 -c "print('python tēst working')"
-
 # setup entrypoint
 # TODO: figure out why condor_master doesn't start if I do it this way...
 ENV EP /usr/local/bin/entrypoint.sh
@@ -60,6 +79,10 @@ RUN echo "#!/bin/bash" >> $EP \
     && printf "\ncondor_master\n" >> $EP \
     && tail -n 113 /usr/local/bin/wrapdocker >> $EP
 
+# tests
+ADD ./tests /home/scitech/tests
+RUN chown -R scitech /home/scitech/tests
+#
 # user setup
 USER scitech
 WORKDIR /home/scitech
@@ -74,6 +97,7 @@ RUN printf "#!/usr/bin/env python3\nUSERNAME='scitech'\nPASSWORD='scitech123'\n"
 # Set notebook password to 'scitech'. This pw will be used instead of token authentication
 RUN mkdir /home/scitech/.jupyter \ 
     && echo "{ \"NotebookApp\": { \"password\": \"sha1:30a323540baa:6eec8eaf3b4e0f44f2f2aa7b504f80d5bf0ad745\" } }" >> /home/scitech/.jupyter/jupyter_notebook_config.json
+
 
 ENTRYPOINT ["sudo", "/usr/local/bin/entrypoint.sh"]
 CMD ["su", "-", "scitech", "-c", "jupyter notebook --notebook-dir=/home/scitech/shared-data --port=8888 --no-browser --ip=0.0.0.0 --allow-root"] 

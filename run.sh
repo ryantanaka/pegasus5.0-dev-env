@@ -10,5 +10,7 @@ docker container run \
     -p 5000:5000 \
     --runtime $RUNTIME \
     --privileged \
+    --rm \
+    --name pegasus \
     --mount type=bind,source="$(pwd)"/shared-data,target=/home/scitech/shared-data \
     ryantanaka/pegasus5-condor
